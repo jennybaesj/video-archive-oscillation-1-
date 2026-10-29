@@ -1,1 +1,408 @@
 
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#080808">
+  <title>VIDEO ARCHIVE</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      background: #080808;
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      overflow: hidden;
+    }
+
+    header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 10;
+      padding: calc(env(safe-area-inset-top) + 16px) 18px 12px;
+      pointer-events: none;
+      background: linear-gradient(#0007, transparent);
+    }
+
+    header h1 {
+      font-size: 11px;
+      font-weight: 400;
+      letter-spacing: .2em;
+      margin: 0;
+    }
+
+    #feed {
+      width: 100%;
+      height: 100%;
+      height: 100dvh;
+      overflow-y: auto;
+      scroll-snap-type: y mandatory;
+      scroll-snap-stop: always;
+      overscroll-behavior-y: contain;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    #feed::-webkit-scrollbar {
+      display: none;
+    }
+
+    #intro {
+      width: 100%;
+      height: 100vh;
+      height: 100dvh;
+      flex-shrink: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 30px 24px;
+      text-align: center;
+      background: #101010;
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+    }
+
+    .intro-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .arrow {
+      font-size: 32px;
+      margin-bottom: 14px;
+      animation: float 1.6s ease-in-out infinite;
+    }
+
+    .ko {
+      font-size: 18px;
+      line-height: 1.9;
+      margin: 0 0 8px;
+      word-break: keep-all;
+    }
+
+    .en, .zh {
+      color: #bdbdbd;
+      font-size: 12px;
+      line-height: 1.8;
+      margin: 0;
+    }
+
+    .scroll-label {
+      margin-top: 36px;
+      color: #777;
+      font-size: 9px;
+      letter-spacing: .22em;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(8px); }
+    }
+
+    .video-card {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      height: 100dvh;
+      flex-shrink: 0;
+      overflow: hidden;
+      background: #080808;
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+    }
+
+    .video-card video {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: #080808;
+    }
+
+    .video-card::after {
+      content: "";
+      position: absolute;
+      inset: 45% 0 0;
+      background: linear-gradient(transparent, #0009);
+      pointer-events: none;
+    }
+
+    .caption {
+      position: absolute;
+      z-index: 2;
+      left: 18px;
+      right: 18px;
+      bottom: calc(env(safe-area-inset-bottom) + 22px);
+      pointer-events: none;
+    }
+
+    .number {
+      font-size: 10px;
+      letter-spacing: .2em;
+      opacity: .75;
+      margin-bottom: 8px;
+    }
+
+    .caption h2 {
+      font-size: 18px;
+      font-weight: 400;
+      margin: 0 0 20px;
+    }
+
+    .time-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      font-size: 11px;
+      letter-spacing: .02em;
+      color: #fff;
+      margin-bottom: 9px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 3px;
+      border-radius: 5px;
+      background: #ffffff55;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      width: 0%;
+      height: 100%;
+      background: #fff;
+      transition: width .1s linear;
+    }
+
+    .status {
+      min-height: 100dvh;
+      display: grid;
+      place-items: center;
+      padding: 30px;
+      text-align: center;
+      color: #aaa;
+      font-size: 13px;
+      line-height: 1.8;
+      scroll-snap-align: start;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>VIDEO ARCHIVE</h1>
+  </header>
+
+  <main id="feed">
+    <section id="intro">
+      <div class="intro-content">
+        <div class="arrow">↓</div>
+
+        <p class="ko">
+          아래로 스크롤하여<br>
+          영상을 확인하세요.
+        </p>
+
+        <p class="en">
+          Scroll down to watch the videos.
+        </p>
+
+        <p class="zh">
+          向下滑动即可观看视频。
+        </p>
+
+        <div class="scroll-label">SCROLL TO EXPLORE</div>
+      </div>
+    </section>
+
+    <div id="status" class="status">
+      Loading videos...
+    </div>
+  </main>
+
+  <script type="module">
+    import { createClient } from
+      "https://esm.sh/@supabase/supabase-js@2";
+
+    const SUPABASE_URL = "https://jnxozcuxekjjpunccroz.supabase.co/rest/v1/";
+    const SUPABASE_KEY = "sb_publishable_QaKdESylrS4fXXwQIEAxcg_PB6qaM91";
+
+    const feed = document.getElementById("feed");
+    const status = document.getElementById("status");
+
+    function formatTime(seconds) {
+      if (!Number.isFinite(seconds) || seconds < 0) {
+        return "--:--";
+      }
+
+      const total = Math.ceil(seconds);
+      const minutes = Math.floor(total / 60);
+      const secs = total % 60;
+
+      return String(minutes).padStart(2, "0") + ":" +
+             String(secs).padStart(2, "0");
+    }
+
+    function createTimeDisplay(video) {
+      const timeRow = document.createElement("div");
+      timeRow.className = "time-row";
+
+      const remaining = document.createElement("span");
+      const total = document.createElement("span");
+
+      remaining.textContent = "남은 시간 --:--";
+      total.textContent = "전체 --:--";
+
+      const track = document.createElement("div");
+      track.className = "progress-track";
+
+      const fill = document.createElement("div");
+      fill.className = "progress-fill";
+
+      track.append(fill);
+      timeRow.append(remaining, total);
+
+      function updateTime() {
+        const duration = video.duration;
+        const current = video.currentTime;
+
+        if (!Number.isFinite(duration) || duration <= 0) {
+          remaining.textContent = "남은 시간 --:--";
+          total.textContent = "전체 --:--";
+          fill.style.width = "0%";
+          return;
+        }
+
+        remaining.textContent =
+          "남은 시간 " + formatTime(duration - current);
+
+        total.textContent =
+          "전체 " + formatTime(duration);
+
+        const progress = Math.min(100, current / duration * 100);
+        fill.style.width = progress + "%";
+      }
+
+      video.addEventListener("loadedmetadata", updateTime);
+      video.addEventListener("durationchange", updateTime);
+      video.addEventListener("timeupdate", updateTime);
+      video.addEventListener("seeking", updateTime);
+      video.addEventListener("ended", updateTime);
+
+      updateTime();
+
+      return { timeRow, track, updateTime };
+    }
+
+    async function start() {
+      try {
+        const supabase = createClient(
+          SUPABASE_URL,
+          SUPABASE_KEY
+        );
+
+        const { data, error } = await supabase
+          .from("videos")
+          .select("id, title, video_url, sort_order")
+          .eq("active", true)
+          .order("sort_order", { ascending: true })
+          .limit(5);
+
+        if (error) throw error;
+
+        status.remove();
+
+        if (!data || data.length === 0) {
+          showStatus("아직 등록된 영상이 없습니다.");
+          return;
+        }
+
+        data.forEach((item, index) => {
+          const card = document.createElement("section");
+          card.className = "video-card";
+
+          const video = document.createElement("video");
+          video.src = item.video_url;
+          video.muted = true;
+          video.defaultMuted = true;
+          video.loop = true;
+          video.playsInline = true;
+          video.autoplay = true;
+          video.preload = index === 0 ? "auto" : "metadata";
+          video.setAttribute("muted", "");
+          video.setAttribute("playsinline", "");
+
+          const caption = document.createElement("div");
+          caption.className = "caption";
+
+          const number = document.createElement("div");
+          number.className = "number";
+          number.textContent =
+            String(index + 1).padStart(2, "0");
+
+          const title = document.createElement("h2");
+          title.textContent = item.title;
+
+          const timer = createTimeDisplay(video);
+
+          caption.append(
+            number,
+            title,
+            timer.timeRow,
+            timer.track
+          );
+
+          card.append(video, caption);
+          feed.append(card);
+        });
+
+        const observer = new IntersectionObserver(
+          entries => {
+            entries.forEach(entry => {
+              const video = entry.target.querySelector("video");
+
+              if (entry.isIntersecting) {
+                video.muted = true;
+                video.play().catch(() => {});
+              } else {
+                video.pause();
+              }
+            });
+          },
+          {
+            root: feed,
+            threshold: 0.65
+          }
+        );
+
+        document.querySelectorAll(".video-card").forEach(card => {
+          observer.observe(card);
+        });
+
+      } catch (error) {
+        console.error(error);
+        status.textContent =
+          "영상을 불러오지 못했습니다. 설정을 확인해 주세요.";
+      }
+    }
+
+    function showStatus(message) {
+     
